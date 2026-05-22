@@ -1,87 +1,39 @@
-import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-import pandas as pd
+from typing import List, Dict
 
-app = FastAPI(title="Employee CSV API")
+app = FastAPI()
 
-CSV_FILE = "data.csv"
+# Matches your frontend payload structure
+class MessagePayload(BaseModel):
+    message: str
 
+# Aligned mock database: Changed "message" key to "text" to match your UI mapping!
+chat_history: List[Dict[str, str]] = [
+    {"sender": "bot", "text": "Hello! How can I help you today?"}
+]
 
-# Schema for adding new data via POST
-class Employee(BaseModel):
-    id: int
-    name: str
-    role: str
-    department: str
+@app.get("/chat/load-history")
+def load_history():
+    """Returns the chat history list matching frontend property names."""
+    return {"status": "success", "history": chat_history}
 
-
-@app.get("/")
-def read_root():
+@app.post("/chat/message")
+def send_message(payload: MessagePayload):
+    """Receives a user message, stores it, and returns a response matching the UI."""
+    # 1. Save user message to history using 'text'
+    chat_history.append({"sender": "user", "text": payload.message})
+    
+    # 2. Simulate a basic bot reply
+    bot_reply = f"Received your message: '{payload.message}'"
+    chat_history.append({"sender": "bot", "text": bot_reply})
+    
     return {
-        "message": "FastAPI CSV API is running"
+        "status": "success",
+        "user_message": payload.message,
+        "reply": bot_reply # Handled dynamically by handleSubmit in ChatWindow
     }
 
-
-# GET Method: Read CSV data
-@app.get("/csv-data")
-def get_csv_data():
-
-    if not os.path.exists(CSV_FILE):
-        return {
-            "message": "CSV file not found",
-            "data": []
-        }
-
-    try:
-        df = pd.read_csv(CSV_FILE)
-
-        return {
-            "count": len(df),
-            "data": df.to_dict(orient="records")
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
-
-
-# POST Method: Add new employee data
-@app.post("/csv-data")
-def add_csv_data(employee: Employee):
-
-    try:
-        # Convert incoming JSON to DataFrame
-        new_data = pd.DataFrame([employee.model_dump()])
-
-        # Append or create CSV
-        if os.path.exists(CSV_FILE):
-
-            new_data.to_csv(
-                CSV_FILE,
-                mode="a",
-                header=False,
-                index=False
-            )
-
-        else:
-
-            new_data.to_csv(
-                CSV_FILE,
-                mode="w",
-                header=True,
-                index=False
-            )
-
-        return {
-            "message": "Data added successfully",
-            "data": employee
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
