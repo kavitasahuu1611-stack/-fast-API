@@ -13,6 +13,10 @@ chat_history: List[Dict[str, str]] = [
     {"sender": "bot", "text": "Hello! How can I help you today?"}
 ]
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 @app.get("/chat/load-history")
 def load_history():
     """Returns the chat history list matching frontend property names."""
